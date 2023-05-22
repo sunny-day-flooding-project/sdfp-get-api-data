@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 from unicodedata import numeric
 from pytz import timezone
 import requests
@@ -51,8 +52,8 @@ def postgres_upsert(table, conn, keys, data_iter):
 # Method-specific functions #
 #############################
 
-def get_fiman_atm(id, sensor, begin_date, end_date):
-    """Retrieve data from specified sensor from the NOAA tides and currents API
+def get_fiman_data(id, sensor, begin_date, end_date):
+    """Retrieve data from specified sensor from the FIMAN API
 
     Args:
         id (str): Station id
@@ -106,35 +107,43 @@ def get_fiman_atm(id, sensor, begin_date, end_date):
 
     return r_df.drop_duplicates(subset=['id', 'date'])
 
-#####################
-# atm API functions #
-#####################
-
-def get_atm_pressure(atm_id, atm_src, begin_date, end_date):
-    """Yo, yo, yo, it's a wrapper function!
+def get_hohonu_data(id, begin_date, end_date):
+    """Retrieve data from specified sensor from the Hohonu API
 
     Args:
-        atm_id (str): Value from `sensor_surveys` table that declares the ID of the station to use for atmospheric pressure data.
-        atm_src (str): Value from `sensor_surveys` table that declares the source of the atmospheric pressure data.
-        begin_date (str): The beginning date to retrieve data. Format: %Y%m%d %H:%M
-        end_date (str): The end date to retrieve data. Format: %Y%m%d %H:%M
-
+        id (str): Station id
+        begin_date (str): Beginning date of requested time period. Format: %Y%m%d %H:%M
+        end_date (str): End date of requested time period. Format: %Y%m%d %H:%M
+        
     Returns:
-        pandas.DataFrame: Atmospheric pressure data for the specified time range and source
+        r_df (pd.DataFrame): DataFrame of requested data from specified station and time range. Dates in UTC
     """    
+
     print(inspect.stack()[0][3])    # print the name of the function we just entered
 
-    match atm_src.upper():
-        case "NOAA":
-            return get_noaa_atm(id = atm_id, begin_date = begin_date, end_date = end_date)
-        case "NWS":
-            return get_nws_atm(id = atm_id, begin_date = begin_date, end_date = end_date)
-        case "ISU":
-            return get_isu_atm(id = atm_id, begin_date = begin_date, end_date = end_date)
-        case "FIMAN":
-            return get_fiman_atm(id = atm_id, begin_date = begin_date, end_date = end_date)
-        case _:
-            return "No valid `atm_src` provided! Make sure you are supplying a string"
+    new_begin_date = pd.to_datetime(begin_date, utc=True) - timedelta(seconds = 3600)
+    new_end_date = pd.to_datetime(end_date, utc=True) + timedelta(seconds = 3600)
+
+    query = {'datum' : 'NAVD',
+             'from' : new_begin_date.strftime('%Y-%m-%d'),
+             'to' : new_end_date.strftime('%Y-%m-%d'),
+             'format' : 'json',
+             'tz': '0',
+             'cleaned': 'true'
+    }
+    print(query)    # FOR DEBUGGING
+    url = "https://dashboard.hohonu.io/api/v1/stations/" + id + "/statistic"
+
+    r = requests.get(url, params=query, timeout=120, headers={'Authorization': '24c5a7d297ffb27efa4358fe080b3cdd7f88a7f4'})
+    j = json.loads(r.content)
+    r_df = pd.DataFrame({'timestamp': j['data'][0], 'value': j['data'][1]}).dropna()
+    r_df["date"] = pd.to_datetime(r_df["timestamp"], utc=True); 
+    r_df["id"] = str(id); 
+    r_df["api_name"] = "Hohonu"
+    r_df["type"] = "water_level"
+    r_df = r_df.loc[:,["id","date","value","api_name", "type"]]
+
+    return r_df.drop_duplicates(subset=['id', 'date'])
 
 def main():
     print("Entering main of process_pressure.py")
@@ -160,12 +169,30 @@ def main():
 
     # Get water level data
 
+    # FIMAN
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
     stations = stations.to_numpy()
     
     for wl_id in stations:
         print("Querying site " + wl_id[0] + "...")
-        new_data = get_fiman_atm(wl_id[0], 'Water Elevation', start_date, end_date)
+        new_data = get_fiman_data(wl_id[0], 'Water Elevation', start_date, end_date)
+
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
+        
+        print(new_data.shape[0] , "new records!")
+        
+        new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
+
+    # Hohonu
+    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='Hohonu'", engine)
+    stations = stations.to_numpy()
+
+    for wl_id in stations:
+        print("Querying site " + wl_id[0] + "...")
+        new_data = get_hohonu_data(wl_id[0], start_date, end_date)
 
         if new_data.shape[0] == 0:
             warnings.warn("- No new raw data!")
@@ -177,6 +204,8 @@ def main():
         time.sleep(10)
 
     # Get atm_pressure data
+
+    # FIMAN
     stations = pd.read_sql_query("SELECT DISTINCT atm_station_id FROM sensor_surveys WHERE atm_data_src='FIMAN'", engine)
     stations = stations.to_numpy()
 
