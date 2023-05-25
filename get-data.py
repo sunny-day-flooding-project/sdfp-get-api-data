@@ -134,7 +134,7 @@ def get_hohonu_data(id, begin_date, end_date):
     print(query)    # FOR DEBUGGING
     url = "https://dashboard.hohonu.io/api/v1/stations/" + id + "/statistic"
 
-    r = requests.get(url, params=query, timeout=120, headers={'Authorization': '24c5a7d297ffb27efa4358fe080b3cdd7f88a7f4'})
+    r = requests.get(url, params=query, timeout=120, headers={'Authorization': os.environ.get('HOHONU_API_TOKEN')})
     j = json.loads(r.content)
     r_df = pd.DataFrame({'timestamp': j['data'][0], 'value': j['data'][1]}).dropna()
     r_df["date"] = pd.to_datetime(r_df["timestamp"], utc=True); 
@@ -211,7 +211,7 @@ def main():
 
     for atm_station_id in stations:
         print("Querying site " + atm_station_id[0] + "...")
-        new_data = get_fiman_atm(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
+        new_data = get_fiman_data(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
 
         if new_data.shape[0] == 0:
             warnings.warn("- No new raw data!")
