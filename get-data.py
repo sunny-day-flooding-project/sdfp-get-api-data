@@ -92,7 +92,6 @@ def get_fiman_data(id, sensor, begin_date, end_date):
     #     return pd.DataFrame()
 
     j = r.content
-    print(j)
     doc = xmltodict.parse(j)
     
     unnested = doc["onerain"]["response"]["general"]["row"]
@@ -183,7 +182,7 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
 
@@ -201,7 +200,7 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
 
@@ -221,7 +220,7 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
     
