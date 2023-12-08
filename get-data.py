@@ -169,7 +169,7 @@ def main():
     # Get water level data
 
     # FIMAN
-    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
+    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN' AND \"sensor_ID\"!='DE_02'", engine)
     stations = stations.to_numpy()
     
     for wl_id in stations:
