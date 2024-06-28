@@ -201,7 +201,7 @@ def main():
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
 
-    # Hohonu
+    # # Hohonu
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='Hohonu'", engine)
     stations = stations.to_numpy()
 
@@ -242,7 +242,7 @@ def main():
     for atm_station_id in stations:
         print("Querying FIMAN site " + atm_station_id[0] + "...")
 
-        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{wl_id[0]}' AND type='pressure'"
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{atm_station_id[0]}' AND type='pressure'"
         
         start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
         date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
