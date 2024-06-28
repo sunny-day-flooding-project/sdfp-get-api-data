@@ -85,7 +85,7 @@ def get_fiman_data(id, sensor, begin_date, end_date):
              'show_quality' : True,
              'sensor_id' : fiman_gauge_keys.iloc[0]["sensor_id"]}
     print(query)    # FOR DEBUGGING
-    
+
     # try:
     r = requests.get(os.environ.get("FIMAN_URL"), params=query, timeout=120)
     # except requests.exceptions.Timeout:
@@ -132,6 +132,7 @@ def get_hohonu_data(id, begin_date, end_date):
              'cleaned': 'true'
     }
     print(query)    # FOR DEBUGGING
+
     url = "https://dashboard.hohonu.io/api/v1/stations/" + id + "/statistic"
 
     r = requests.get(url, params=query, timeout=120, headers={'Authorization': os.environ.get('HOHONU_API_TOKEN')})
@@ -164,35 +165,62 @@ def main():
     # Collect new data  #
     #####################
 
-    end_date = pd.to_datetime(datetime.utcnow())
-    start_date = end_date - timedelta(days=int(os.environ.get('NUM_DAYS')))
+    now = pd.Timestamp("now", tz="UTC")
 
     # Get water level data
 
     # FIMAN
-    # stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
-    # stations = stations.to_numpy()
-    
-    # for wl_id in stations:
-    #     print("Querying site " + wl_id[0] + "...")
-    #     new_data = get_fiman_data(wl_id[0], 'Water Elevation', start_date, end_date)
+    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
+    stations = stations.to_numpy()
 
-    #     if new_data.shape[0] == 0:
-    #         warnings.warn("- No new raw data!")
-    #         return
+    for wl_id in stations:
+        print("Querying FIMAN site " + wl_id[0] + "...")
+
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{wl_id[0]}' AND type='water_level'"
         
-    #     print(new_data.shape[0] , "new records!")
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+
+        # Don't go further than 21 days back 
+        if (start_date < date_limit):
+            start_date = date_limit
+
+        end_date = start_date + pd.Timedelta(hours=12)
+        if (end_date > now):
+            end_date = now
         
-    #     # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     time.sleep(10)
+        new_data = get_fiman_data(wl_id[0], 'Water Elevation', start_date, end_date)
+
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
+        
+        print(new_data.shape[0] , "new records!")
+        
+        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
 
     # Hohonu
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='Hohonu'", engine)
     stations = stations.to_numpy()
 
     for wl_id in stations:
-        print("Querying site " + wl_id[0] + "...")
+        print("Querying Hohonu site " + wl_id[0] + "...")
+
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='Hohonu' AND id='{wl_id[0]}' AND type='water_level'"
+        
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+
+        # Don't go further than 21 days back 
+        if (start_date < date_limit):
+            start_date = date_limit
+
+        end_date = start_date + pd.Timedelta(hours=12)
+        if (end_date > now):
+            end_date = now
+
         new_data = get_hohonu_data(wl_id[0], start_date, end_date)
 
         if new_data.shape[0] == 0:
@@ -208,22 +236,36 @@ def main():
     # Get atm_pressure data
 
     # FIMAN
-    # stations = pd.read_sql_query("SELECT DISTINCT atm_station_id FROM sensor_surveys WHERE atm_data_src='FIMAN'", engine)
-    # stations = stations.to_numpy()
+    stations = pd.read_sql_query("SELECT DISTINCT atm_station_id FROM sensor_surveys WHERE atm_data_src='FIMAN'", engine)
+    stations = stations.to_numpy()
 
-    # for atm_station_id in stations:
-    #     print("Querying site " + atm_station_id[0] + "...")
-    #     new_data = get_fiman_data(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
+    for atm_station_id in stations:
+        print("Querying FIMAN site " + atm_station_id[0] + "...")
 
-    #     if new_data.shape[0] == 0:
-    #         warnings.warn("- No new raw data!")
-    #         return
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{wl_id[0]}' AND type='pressure'"
         
-    #     print(new_data.shape[0] , "new records!")
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+
+        # Don't go further than 21 days back 
+        if (start_date < date_limit):
+            start_date = date_limit
+
+        end_date = start_date + pd.Timedelta(hours=12)
+        if (end_date > now):
+            end_date = now
         
-    #     # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     time.sleep(10)
+        new_data = get_fiman_data(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
+
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
+        
+        print(new_data.shape[0] , "new records!")
+        
+        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
     
     engine.dispose()
 
