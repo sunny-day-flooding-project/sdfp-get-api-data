@@ -107,6 +107,45 @@ def get_fiman_data(id, sensor, begin_date, end_date):
 
     return r_df.drop_duplicates(subset=['id', 'date'])
 
+def get_noaa_data(id, begin_date, end_date):
+    """Retrieve atmospheric pressure data from the NOAA tides and currents API
+
+    Args:
+        id (str): Station id
+        begin_date (str): Beginning date of requested time period. Format: %Y%m%d %H:%M
+        end_date (str): End date of requested time period. Format: %Y%m%d %H:%M
+        
+    Returns:
+        r_df (pd.DataFrame): DataFrame of atmospheric pressure from specified station and time range. Dates in UTC
+    """    
+    print(inspect.stack()[0][3])    # print the name of the function we just entered
+    
+    query = {'station' : str(id),
+             'begin_date' : begin_date.strftime("%Y%m%d %H:%M"),
+             'end_date' : end_date.strftime("%Y%m%d %H:%M"),
+             'product' : 'water_level',
+             'units' : 'english',
+             'datum': "NAVD",
+             'time_zone' : 'gmt',
+             'format' : 'json',
+             'application' : 'Sunny_Day_Flooding_project, https://github.com/sunny-day-flooding-project'}
+    print(query)
+    
+    r = requests.get('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter/', params=query)
+    
+    j = r.json()
+    r_df = pd.DataFrame.from_dict(j["data"])
+    
+    r_df['v'].replace('', np.nan, inplace=True)
+    r_df["t"] = pd.to_datetime(r_df["t"], utc=True) 
+    r_df["id"] = str(id) 
+    r_df["type"] = "water_level"
+    r_df["api_name"] = "NOAA"
+    # r_df["notes"] = "coop"
+    r_df = r_df.loc[:,["id","t","v","type","api_name"]].rename(columns = {"id":"id","t":"date","v":"value"})
+
+    return r_df.dropna()
+
 def get_hohonu_data(id, begin_date, end_date):
     """Retrieve data from specified sensor from the Hohonu API
 
@@ -182,7 +221,7 @@ def main():
         date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
 
         # Don't go further than 21 days back 
-        if (start_date < date_limit):
+        if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
         end_date = start_date + pd.Timedelta(hours=12)
@@ -197,11 +236,10 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
 
-    # # Hohonu
+    # Hohonu
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='Hohonu'", engine)
     stations = stations.to_numpy()
 
@@ -214,7 +252,7 @@ def main():
         date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
 
         # Don't go further than 21 days back 
-        if (start_date < date_limit):
+        if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
         end_date = start_date + pd.Timedelta(hours=24)
@@ -229,7 +267,37 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
+
+    # NOAA
+    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='NOAA'", engine)
+    stations = stations.to_numpy()
+
+    for wl_id in stations:
+        print("Querying NOAA site " + wl_id[0] + "...")
+
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='NOAA' AND id='{wl_id[0]}' AND type='water_level'"
+        
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+
+        # Don't go further than 21 days back 
+        if (start_date is None or start_date < date_limit):
+            start_date = date_limit
+
+        end_date = start_date + pd.Timedelta(hours=24)
+        if (end_date > now):
+            end_date = now
+
+        new_data = get_noaa_data(wl_id[0], start_date, end_date)
+
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
+        
+        print(new_data.shape[0] , "new records!")
+        
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
 
@@ -248,7 +316,7 @@ def main():
         date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
 
         # Don't go further than 21 days back 
-        if (start_date < date_limit):
+        if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
         end_date = start_date + pd.Timedelta(hours=12)
@@ -263,7 +331,6 @@ def main():
         
         print(new_data.shape[0] , "new records!")
         
-        # new_data.to_sql("external_api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
         time.sleep(10)
     
