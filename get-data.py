@@ -212,35 +212,35 @@ def main():
     # Get water level data
 
     # FIMAN
-    # stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
-    # stations = stations.to_numpy()
+    stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='FIMAN'", engine)
+    stations = stations.to_numpy()
 
-    # for wl_id in stations:
-    #     print("Querying FIMAN site " + wl_id[0] + "...")
+    for wl_id in stations:
+        print("Querying FIMAN site " + wl_id[0] + "...")
 
-    #     query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{wl_id[0]}' AND type='water_level'"
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{wl_id[0]}' AND type='water_level'"
         
-    #     start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
-    #     date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
 
-    #     # Don't go further than 21 days back 
-    #     if (start_date is None or start_date < date_limit):
-    #         start_date = date_limit
+        # Don't go further than 21 days back 
+        if (start_date is None or start_date < date_limit):
+            start_date = date_limit
 
-    #     end_date = start_date + pd.Timedelta(hours=12)
-    #     if (end_date > now):
-    #         end_date = now
+        end_date = start_date + pd.Timedelta(hours=12)
+        if (end_date > now):
+            end_date = now
         
-    #     new_data = get_fiman_data(wl_id[0], 'Water Elevation', start_date, end_date)
+        new_data = get_fiman_data(wl_id[0], 'Water Elevation', start_date, end_date)
 
-    #     if new_data.shape[0] == 0:
-    #         warnings.warn("- No new raw data!")
-    #         return
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
         
-    #     print(new_data.shape[0] , "new records!")
+        print(new_data.shape[0] , "new records!")
         
-    #     new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     time.sleep(10)
+        new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
 
     # Hohonu
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='Hohonu'", engine)
@@ -334,35 +334,35 @@ def main():
     # Get atm_pressure data
 
     # FIMAN
-    # stations = pd.read_sql_query("SELECT DISTINCT atm_station_id FROM sensor_surveys WHERE atm_data_src='FIMAN'", engine)
-    # stations = stations.to_numpy()
+    stations = pd.read_sql_query("SELECT DISTINCT atm_station_id FROM sensor_surveys WHERE atm_data_src='FIMAN'", engine)
+    stations = stations.to_numpy()
 
-    # for atm_station_id in stations:
-    #     print("Querying FIMAN site " + atm_station_id[0] + "...")
+    for atm_station_id in stations:
+        print("Querying FIMAN site " + atm_station_id[0] + "...")
 
-    #     query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{atm_station_id[0]}' AND type='pressure'"
+        query = f"SELECT MAX(date) FROM api_data WHERE api_name='FIMAN' AND id='{atm_station_id[0]}' AND type='pressure'"
         
-    #     start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
-    #     date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
+        start_date = pd.to_datetime(pd.read_sql_query(query, engine).iloc[0]['max'])
+        date_limit = pd.to_datetime(now - pd.Timedelta(days=21))
 
-    #     # Don't go further than 21 days back 
-    #     if (start_date is None or start_date < date_limit):
-    #         start_date = date_limit
+        # Don't go further than 21 days back 
+        if (start_date is None or start_date < date_limit):
+            start_date = date_limit
 
-    #     end_date = start_date + pd.Timedelta(hours=12)
-    #     if (end_date > now):
-    #         end_date = now
+        end_date = start_date + pd.Timedelta(hours=12)
+        if (end_date > now):
+            end_date = now
         
-    #     new_data = get_fiman_data(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
+        new_data = get_fiman_data(atm_station_id[0], 'Barometric Pressure', start_date, end_date)
 
-    #     if new_data.shape[0] == 0:
-    #         warnings.warn("- No new raw data!")
-    #         return
+        if new_data.shape[0] == 0:
+            warnings.warn("- No new raw data!")
+            return
         
-    #     print(new_data.shape[0] , "new records!")
+        print(new_data.shape[0] , "new records!")
         
-    #     new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
-    #     time.sleep(10)
+        new_data.to_sql("api_data", engine, if_exists = "append", method=postgres_upsert, index=False)
+        time.sleep(10)
     
     engine.dispose()
 
