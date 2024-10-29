@@ -217,7 +217,7 @@ def main():
         if (start_date < date_limit):
             start_date = date_limit
 
-        end_date = start_date + pd.Timedelta(hours=12)
+        end_date = start_date + pd.Timedelta(hours=24)
         if (end_date > now):
             end_date = now
 
