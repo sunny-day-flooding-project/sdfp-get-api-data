@@ -316,9 +316,9 @@ def main():
         if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
-        end_date = start_date + pd.Timedelta(hours=12)
-        if (end_date > now):
-            end_date = now
+        end_date = start_date + pd.Timedelta(hours=24)
+        # if (end_date > now):
+        #     end_date = now
 
         new_data = get_noaa_data(wl_id[0], 'predictions', start_date, end_date)
 
