@@ -119,7 +119,7 @@ def get_noaa_data(id, type, begin_date, end_date):
         r_df (pd.DataFrame): DataFrame of requested data from specified station and time range. Dates in UTC
     """    
     print(inspect.stack()[0][3])    # print the name of the function we just entered
-    
+
     query = {'station' : str(id),
              'begin_date' : begin_date.strftime("%Y%m%d %H:%M"),
              'end_date' : end_date.strftime("%Y%m%d %H:%M"),
@@ -291,9 +291,9 @@ def main():
         if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
-        end_date = start_date + pd.Timedelta(hours=12)
-        if (end_date > now):
-            end_date = now
+        end_date = start_date + pd.Timedelta(hours=24)
+        # if (end_date > now):
+        #     end_date = now
 
         new_data = get_noaa_data(wl_id[0], 'water_level', start_date, end_date)
 
