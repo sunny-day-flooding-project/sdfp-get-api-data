@@ -275,6 +275,8 @@ def main():
 
     # NOAA
     stations = pd.read_sql_query("SELECT DISTINCT wl_id FROM sensor_surveys WHERE wl_src='NOAA'", engine)
+    alt_stations = pd.read_sql_query("SELECT DISTINCT alt_wl_id as wl_id FROM sensor_surveys WHERE alt_wl_src='NOAA'", engine)
+    stations = pd.concat([stations, alt_stations]).drop_duplicates().reset_index(drop=True)
     stations = stations.to_numpy()
 
     for wl_id in stations:
@@ -316,9 +318,13 @@ def main():
         if (start_date is None or start_date < date_limit):
             start_date = date_limit
 
-        end_date = start_date + pd.Timedelta(hours=24)
-        # if (end_date > now):
-        #     end_date = now
+        if (start_date > now):
+            start_date = now
+
+        end_date = start_date + pd.Timedelta(days=2)
+        # max_date = now + pd.Timedelta(days=2)
+        # if (end_date > max_date):
+        #     end_date = max_date
 
         new_data = get_noaa_data(wl_id[0], 'predictions', start_date, end_date)
 
